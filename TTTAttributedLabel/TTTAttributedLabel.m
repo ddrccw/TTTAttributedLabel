@@ -738,8 +738,10 @@ static inline NSAttributedString * NSAttributedStringBySettingColorFromContext(N
                         self.xRangeOftruncationToken = NSMakeRange(CGFloat_ceil(truncatedLineWidth - truncationTokenLineWidth), CGFloat_ceil(truncationTokenLineWidth));
                         relativePoint = CGPointMake(truncatedLineWidth - truncationTokenLineWidth, lineOrigin.y);
                         
-                        CFIndex idx = CTLineGetStringIndexForPosition(line, relativePoint);
-                        NSRange r = NSMakeRange((NSUInteger)idx, [self.truncationTokenString length]);
+                        //in case of out range in the real string
+                        //CFIndex idx = CTLineGetStringIndexForPosition(line, relativePoint);
+                        //NSRange r = NSMakeRange((NSUInteger)idx, [self.truncationTokenString length]);
+                        NSRange r = NSMakeRange(0, 0);
                         self.truncationTokenLink = [NSTextCheckingResult linkCheckingResultWithRange:r
                                                                                                  URL:[NSURL URLWithString:self.truncationTokenLinkUrl]];
                         CFRelease(truncationTokenLine);
@@ -971,21 +973,23 @@ afterInheritingLabelAttributesAndConfiguringWithBlock:(NSMutableAttributedString
 - (void)setActiveLink:(NSTextCheckingResult *)activeLink {
     _activeLink = activeLink;
 
-    if (_activeLink && [self.activeLinkAttributes count] > 0) {
-        if (!self.inactiveAttributedText) {
-            self.inactiveAttributedText = [self.attributedText copy];
+    if (![activeLink isEqual:self.truncationTokenLink]) {
+        if (_activeLink && [self.activeLinkAttributes count] > 0) {
+            if (!self.inactiveAttributedText) {
+                self.inactiveAttributedText = [self.attributedText copy];
+            }
+
+            NSMutableAttributedString *mutableAttributedString = [self.inactiveAttributedText mutableCopy];
+            [mutableAttributedString addAttributes:self.activeLinkAttributes range:_activeLink.range];
+            self.attributedText = mutableAttributedString;
+
+            [self setNeedsDisplay];
+        } else if (self.inactiveAttributedText) {
+            self.attributedText = self.inactiveAttributedText;
+            self.inactiveAttributedText = nil;
+
+            [self setNeedsDisplay];
         }
-
-        NSMutableAttributedString *mutableAttributedString = [self.inactiveAttributedText mutableCopy];
-        [mutableAttributedString addAttributes:self.activeLinkAttributes range:_activeLink.range];
-        self.attributedText = mutableAttributedString;
-
-        [self setNeedsDisplay];
-    } else if (self.inactiveAttributedText) {
-        self.attributedText = self.inactiveAttributedText;
-        self.inactiveAttributedText = nil;
-
-        [self setNeedsDisplay];
     }
 }
 
